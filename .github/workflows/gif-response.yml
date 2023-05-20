@@ -1,0 +1,54 @@
+name: Automated GIF Responses
+
+on:
+  issue_comment:
+    types:
+      - created
+  pull_request_review_comment:
+    types:
+      - created
+
+jobs:
+  gif-response:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+
+      - name: Generate GIF Response
+        run: |
+          comment=$(jq -r '.comment.body' $GITHUB_EVENT_PATH)
+          keywordsToGIFs=(
+            keywordsToGIFs=(
+                ["hello"]="https://example.com/hello.gif"
+                ["thank you"]="https://example.com/thankyou.gif"
+                ["excited"]="https://example.com/excited.gif"
+                ["celebrate"]="https://example.com/celebrate.gif"
+                ["laugh"]="https://example.com/laugh.gif"
+                ["awesome"]="https://example.com/awesome.gif"
+            )
+              
+          )
+          gifURL=""
+          for keyword in "${!keywordsToGIFs[@]}"; do
+            if [[ $comment == *"$keyword"* ]]; then
+              gifURL=${keywordsToGIFs[$keyword]}
+              break
+            fi
+          done
+
+          if [[ $gifURL != "" ]]; then
+            echo "Found keyword '$keyword' in comment. Posting GIF response..."
+            curl -s -X POST \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -d "{\"body\": \"![GIF Response]($gifURL)\"}" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${GITHUB_ISSUE_NUMBER}/comments"
+          else
+            echo "No relevant keyword found in comment. Skipping GIF response."
+          fi
